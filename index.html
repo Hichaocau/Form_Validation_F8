@@ -12,7 +12,7 @@
 
         <form action="" method="POST" class="form" id="form-1">
           <h3 class="heading">Thành viên đăng ký</h3>
-          <p class="desc">Cùng nhau học lập trình miễn phí tại F8 ❤️</p>
+          <!-- <p class="desc">Cùng nhau học lập trình miễn phí tại F8 ❤️</p> -->
       
           <div class="spacer"></div>
       
@@ -39,6 +39,39 @@
             <input id="password_confirmation" name="password_confirmation" placeholder="Nhập lại mật khẩu" type="password" class="form-control">
             <span class="form-message"></span>
           </div>
+
+          <div class="form-group">
+            <label for="province" class="form-label">Tỉnh/TP</label>
+            <select id="province" name="province" class="form-control">
+              <option value="">--Chọn Tỉnh/TP--</option>
+              <option value="hni">Hà Nội</option>
+              <option value="hcm">Hồ Chí Minh</option>
+              <option value="other">Khác</option>  
+            </select> 
+            <span class="form-message"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="avatar" class="form-label">Ảnh đại diện</label>
+            <input id="avatar" name="avatar" type="file" class="form-control">
+            <span class="form-message"></span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Giới tính</label>
+            <div class="gender-list">
+              <div class="gender-item">
+                <input name="gender" type="radio" value="male" class="form-control">Nam
+              </div>
+              <div class="gender-item">
+                <input name="gender" type="radio" value="female" class="form-control">Nữ
+              </div>
+              <div class="gender-item">
+                <input name="gender" type="radio" value="other" class="form-control">Khác
+              </div>
+            </div>
+            <span class="form-message"></span>
+          </div>
       
           <button class="form-submit">Đăng ký</button>
         </form>
@@ -53,10 +86,14 @@
           Validator({
               form: '#form-1',
               errorSelector: '.form-message',
+              formGroupSelector: '.form-group',
               rules: [
                   Validator.isRequired('#fullname'),
                   Validator.isRequired('#email'),
                   Validator.isEmail('#email'),
+                  Validator.isRequired('input[name="gender"]'),
+                  Validator.isRequired('#province'),
+                  Validator.isRequired('#avatar'),
                   Validator.minLength('#password', 3),
                   Validator.minLength('#password_confirmation', 3),
                   Validator.isConfirmed('#password_confirmation', () => {

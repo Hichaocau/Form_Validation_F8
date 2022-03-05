@@ -1,11 +1,20 @@
 
 function Validator(options){
 
+    function getParent(element, selector) {
+        while (element.parentElement){
+            if(element.parentElement.matches(selector)){
+                return element.parentElement
+            }
+            element = element.parentElement
+        }
+    }
+
+
     var selectorRules = {};
 
     function Validate(inputElement, rule){
-
-        var errorElement = inputElement.parentElement.querySelector(options.errorSelector)
+        var errorElement = getParent(inputElement, options.formGroupSelector).querySelector(options.errorSelector)
 
         // value: inputElement.value
         // test function: rule.test
@@ -17,17 +26,26 @@ function Validator(options){
         // Lặp qua từng rule $ kiểm tra
         // Nếu có lỗi thì dừng việc kiểm tra
         for (var i = 0; i < rules.length; i++){
-            errorMessage = rules[i](inputElement.value);
+            switch (inputElement.type){
+                case 'radio':
+                case 'checkbox':
+                    errorMessage = rules[i](
+                        formElement.querySelector(rule.selector + ':checked')
+                    );
+                    break;
+                default:
+                    errorMessage = rules[i](inputElement.value);
+            }
             if(errorMessage) break;
         }
 
         if(errorMessage) {
             errorElement.innerHTML = errorMessage
-            inputElement.parentElement.classList.add('invalid')
+            getParent(inputElement, options.formGroupSelector).classList.add('invalid')
         }
         else{
             errorElement.innerHTML = ''
-            inputElement.parentElement.classList.remove('invalid')
+            getParent(inputElement, options.formGroupSelector).classList.remove('invalid')
         }
 
         return !errorMessage
@@ -43,6 +61,7 @@ function Validator(options){
 
             var isFormValid = true;
 
+            // Lặp qua từng rule và validate
             options.rules.forEach(rule => {
                 var inputElement = formElement.querySelector(rule.selector)      
                 var isValid = Validate(inputElement, rule)
@@ -55,8 +74,39 @@ function Validator(options){
                 // Trường hợp submit với javascript
                 if (typeof options.onSubmit === 'function'){
                     var enableInputs = formElement.querySelectorAll('[name]')
+                    // Convert NodeList => Array
                     var formValues = Array.from(enableInputs).reduce(function(values, input){
-                        return (values[input.name] = input.value) && values;
+                        
+                        switch(input.type){
+                            case 'checkbox':
+                                if(!input.matches(':checked')) {
+                                    values[input.name] = ''
+                                    return values;
+                                } 
+
+                                if(!Array.isArray(values[input.name])) {
+                                    values[input.name] = []
+                                }
+
+                                values[input.name].push(input.value)
+                                break;
+                                
+                            case 'radio':
+                                if (input.matches(':checked')){
+                                    values[input.name] = input.value
+                                }
+                                // else{
+                                //     values[input.name] = '';
+                                // }
+                                break;
+                            
+                            case 'file':
+                                values[input.name] = input.files;
+                                break;
+                            default:
+                                values[input.name] = input.value
+                        }
+                        return values;
                     }, {})       
                     options.onSubmit(formValues)
                 }
@@ -80,22 +130,22 @@ function Validator(options){
                 selectorRules[rule.selector] = [rule.test]
             }
 
-            var inputElement = formElement.querySelector(rule.selector)      
-
-            if (inputElement){
+            var inputElements = formElement.querySelectorAll(rule.selector)      
+            // Convert NodeList => Array
+            Array.from(inputElements).forEach(inputElement => {
                 // Xử lý trường hợp blur khỏi input
                 inputElement.addEventListener('blur', () =>{
                     Validate(inputElement, rule)
                 })
-
+    
                 // Xử lý mỗi khi người dùng nhập vào input
                 inputElement.addEventListener('input', () =>{
-                    var errorElement = inputElement.parentElement.querySelector(options.errorSelector)
+                    var errorElement = getParent(inputElement, options.formGroupSelector).querySelector(options.errorSelector)
                     errorElement.innerHTML = ''
-                    inputElement.parentElement.classList.remove('invalid')
+                    getParent(inputElement, options.formGroupSelector).classList.remove('invalid')
                 })
 
-            }
+            })
         })
     }
 }
@@ -109,7 +159,7 @@ Validator.isRequired = function(selector) {
     return {
         selector: selector,
         test(value){
-            return value.trim() ? undefined : 'Vui lòng nhập trường này'
+            return value ? undefined : 'Vui lòng nhập trường này'
         }
     }
 }
@@ -133,11 +183,11 @@ Validator.minLength = function(selector, min) {
     }
 }
 
-Validator.isConfirmed = function(selector , getCofirmValue, message) {
+Validator.isConfirmed = function(selector , getConfirmValue, message) {
     return {
         selector: selector,
         test(value){
-            return value === getCofirmValue() ? undefined : message || 'Giá trị nhập vào không chính xác'
+            return value === getConfirmValue() ? undefined : message || 'Giá trị nhập vào không chính xác'
         }
     }
 }
