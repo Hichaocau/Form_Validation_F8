@@ -1,13 +1,25 @@
 
 function Validator(options){
 
+    var selectorRules = {};
+
     function Validate(inputElement, rule){
 
         var errorElement = inputElement.parentElement.querySelector(options.errorSelector)
 
         // value: inputElement.value
         // test function: rule.test
-        var errorMessage = rule.test(inputElement.value)
+        var errorMessage;
+
+        // Lấy ra các rules của selector
+        var rules = selectorRules[rule.selector]
+        
+        // Lặp qua từng rule $ kiểm tra
+        // Nếu có lỗi thì dừng việc kiểm tra
+        for (var i = 0; i < rules.length; i++){
+            errorMessage = rules[i](inputElement.value);
+            if(errorMessage) break;
+        }
 
         if(errorMessage) {
             errorElement.innerHTML = errorMessage
@@ -17,14 +29,57 @@ function Validator(options){
             errorElement.innerHTML = ''
             inputElement.parentElement.classList.remove('invalid')
         }
+
+        return !errorMessage
     }
 
     // Lấy element của form cần validate
     var formElement = document.querySelector(options.form)
     
     if(formElement){
+        formElement.addEventListener('submit', (e) => {
+            // Khi submit form không load lại trang
+            e.preventDefault();
+
+            var isFormValid = true;
+
+            options.rules.forEach(rule => {
+                var inputElement = formElement.querySelector(rule.selector)      
+                var isValid = Validate(inputElement, rule)
+                if(!isValid){
+                    isFormValid = false;
+                }
+            });
+
+            if(isFormValid){
+                // Trường hợp submit với javascript
+                if (typeof options.onSubmit === 'function'){
+                    var enableInputs = formElement.querySelectorAll('[name]')
+                    var formValues = Array.from(enableInputs).reduce(function(values, input){
+                        return (values[input.name] = input.value) && values;
+                    }, {})       
+                    options.onSubmit(formValues)
+                }
+                // Trường hợp submit với hành vi mặc định
+                else{
+                    formElement.submit()
+                }
+
+            }
+        })
+
+        // Lặp qua mỗi rule và xử lý (lắng nghe sự kiện blur, input,...)
         options.rules.forEach(rule => {
             
+            // Lưu lại các rules cho mỗi input
+            if (Array.isArray(selectorRules[rule.selector])){
+                selectorRules[rule.selector].push(rule.test)
+            }
+            else
+            {
+                selectorRules[rule.selector] = [rule.test]
+            }
+
             var inputElement = formElement.querySelector(rule.selector)      
 
             if (inputElement){
@@ -78,6 +133,11 @@ Validator.minLength = function(selector, min) {
     }
 }
 
-// Validator.isConfirmed = function(){
-
-// }
+Validator.isConfirmed = function(selector , getCofirmValue, message) {
+    return {
+        selector: selector,
+        test(value){
+            return value === getCofirmValue() ? undefined : message || 'Giá trị nhập vào không chính xác'
+        }
+    }
+}
